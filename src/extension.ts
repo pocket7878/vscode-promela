@@ -2,15 +2,38 @@
  * Copyright (C) Microsoft Corporation. All rights reserved.
  *--------------------------------------------------------*/
 
-'use strict';
+"use strict";
 
-import * as vscode from 'vscode';
-import { WorkspaceFolder, DebugConfiguration, ProviderResult, CancellationToken } from 'vscode';
+import * as vscode from "vscode";
+import {
+  WorkspaceFolder,
+  DebugConfiguration,
+  ProviderResult,
+  CancellationToken,
+} from "vscode";
+import { SpinSyntaxChecker } from "./spinSyntaxChecker";
 
 export function activate(context: vscode.ExtensionContext) {
+  // register a configuration provider for 'mock' debug type
+  context.subscriptions.push(
+    vscode.debug.registerDebugConfigurationProvider(
+      "promela-debug",
+      new MockConfigurationProvider()
+    )
+  );
 
-	// register a configuration provider for 'mock' debug type
-	context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('promela-debug', new MockConfigurationProvider()));
+  // register a syntax problem provider
+  const ws = vscode.workspace;
+  const diag = vscode.languages.createDiagnosticCollection("promela");
+  const spinSyntaxChecker = new SpinSyntaxChecker(diag);
+  context.subscriptions.push(diag);
+  ws.onDidOpenTextDocument((e: vscode.TextDocument) => {
+    spinSyntaxChecker.execute(e);
+  });
+
+  ws.onDidSaveTextDocument((e: vscode.TextDocument) => {
+    spinSyntaxChecker.execute(e);
+  });
 }
 
 export function deactivate() {
